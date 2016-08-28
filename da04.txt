@@ -1,0 +1,182 @@
+1、linux内核编译
+步骤 make uImage -j2
+
+流程
+进入Makefile
+ 504 include $(srctree)/arch/$(SRCARCH)/Makefile （找不到目标文件，就找include）
+
+ arch/arm/Makefile
+
+
+299 BOOT_TARGETS    = zImage Image xipImage bootpImage uImage  
+
+304 $(BOOT_TARGETS): vmlinux
+305     $(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
+
+@make ==> make -C (执行build路径下的Makefile)
+291 boot := arch/arm/boot 
+make menuconfig就是在顶层路径下生成了.config文件 存放我们的配置信息
+155 machine-$(CONFIG_ARCH_EXYNOS)       += exynos 
+233 MACHINE  := arch/arm/mach-$(word 1,$(machine-y))/  
+
+MACHINE=arch/arm/mach-exynos/
+$(boot)/$@=arch/arm/boot/uImage 
+
+make -C arch/arm/boot MACHINE= arch/arm/mach-exynos/ arch/arm/boot/uImage
+
+make -p > test （包含了所有的全局变量）
+
+进入arch/arm/boot/Makefile
+ 15 include $(srctree)/$(MACHINE)/Makefile.boot  
+ arch/arm/mach-exynos/Makefile.boot
+  1    zreladdr-y   += 0x40008000 uImage的启动地址
+  2 params_phys-y   := 0x40000100 uImage的存放位置  
+
+78 $(obj)/uImage:  $(obj)/zImage FORCE （强制生成）
+ 
+ 54 $(obj)/zImage:  $(obj)/compressed/vmlinux FORCE
+
+51 $(obj)/compressed/vmlinux: $(obj)/Image FORCE
+52     $(Q)$(MAKE) $(build)=$(obj)/compressed $@
+                                                                                                                     
+make -C arch/arm/boot/compressed
+
+进入arch/arm/boot/compressed/Makefile
+
+185 $(obj)/vmlinux: $(obj)/vmlinux.lds $(obj)/$(HEAD) $(obj)/piggy.$(suffix_y).o \
+186         $(addprefix $(obj)/, $(OBJS)) $(lib1funcs) $(ashldi3) \
+187         $(bswapsdi2) FORCE  
+
+$(obj)/$(HEAD) arch/arm/boot/compressed/head.o （arch/arm/kernel/head.S生成）
+ 
+ $(obj)/piggy.$(suffix_y).o:  $(obj)/piggy.$(suffix_y) FORCE   
+ 192 $(obj)/piggy.$(suffix_y): $(obj)/../Image FORCE （由顶层路径下的vmlinux生成）
+
+OBJ需要配置添加的库文件
+148 lib1funcs = $(obj)/lib1funcs.o  
+154 ashldi3 = $(obj)/ashldi3.o     
+
+进入arch/arm/boot/Makefile
+ 47 $(obj)/Image: vmlinux FORCE  
+需要生成顶层路径下的vmlinux就可以生成我们的Image就可以生成······
+进入顶层路径下的Makefile
+ 817 vmlinux: scripts/link-vmlinux.sh $(vmlinux-deps) FORCE 
+ 809 vmlinux-deps := $(KBUILD_LDS) $(KBUILD_VMLINUX_INIT) $(KBUILD_VMLINUX_MAIN)
+
+ 804 export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
+
+ 802 export KBUILD_VMLINUX_INIT := $(head-y) $(init-y)
+ 803 export KBUILD_VMLINUX_MAIN := $(core-y) $(libs-y) $(drivers-y) $(net-y)
+ 804 export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
+
+head-y=head.o
+ 530 init-y      := init/                                                                                                  
+ 531 drivers-y   := drivers/ sound/ firmware/
+ 532 net-y       := net/
+ 533 libs-y      := lib/
+ 534 core-y      := usr/
+
+生成顶层vmlinux
+
+linux启动流程
+进入arch/arm/kernel/head.S
+使能thumb指令集，我们可以使用thumb指令，启动了异常处理机制
+ 92     safe_svcmode_maskall r9 使能svc模式
+ 365     mrc p15, 0, r9, c0, c0      @ get processor id   
+  95     bl  __lookup_processor_type 
+  					||
+  					\/
+  					r4 = 178行虚拟地址 r5 = begin r6  = end
+  					arch/arm/kernel/head-common.S 进行物理地址和虚拟地址转换，判断处理器类型
+  					148  *  r3, r4, r6 corrupted
+					149  *  r5 = proc_info pointer in physical address space
+					50  *  r9 = cpuid (preserved)   
+118      * r1 = machine no, r2 = atags or dtb,
+119      * r8 = phys_offset, r9 = cpuid, r10 = procinfo   
+
+121     bl  __vet_atags  
+					||
+					\/
+					arch/arm/kernel/head-common.S 完成了对设备传参方式的验证
+123     bl  __fixup_smp
+124 #endif
+125 #ifdef CONFIG_ARM_PATCH_PHYS_VIRT
+126     bl  __fixup_pv_table                                                                                               
+127 #endif
+进行处理器信息保存，为创建页表做准备
+
+128     bl  __create_page_tables  创建页表（创建在物理地址）
+
+arch/arm/mm/proc-v7.S进行armv7处理器的设置
+1、开启了cache，tlbs
+2、开启clk
+3、设置了reset
+
+414  *  r0  = cp#15 control register
+415  *  r1  = machine ID
+416  *  r2  = atags or dtb pointer
+417  *  r4  = page table (see ARCH_PGD_SHIFT in asm/memory.h)
+418  *  r9  = processor ID
+419  *  r13 = *virtual* address to jump to upon completion
+使能mmu需要将页表的物理地址位置指向虚拟地址，我们保存在协处理器中
+444     b   __turn_mmu_on  完成开启mmu操作
+使能成功mmu
+
+进行地址转换前需要进行mmu使能
+137     ldr r13, =__mmap_switched       @ address to jump to after
+138                         @ mmu has been enabled  
+					||
+					\/
+				81     adr r3, __mmap_switched_data（类似于这样的adr操作，都是从处理器或者uImage获取到的）
+				104     b   start_kernel  
+										||
+										\/
+										init/main.c  进行各种初始化操作
+										setuparch（）保存了uboot传递的参数，保存在machine（arch/arm/include/asm/mach/arch.h ）
+										652     rest_init();  
+										382     kernel_thread(kernel_init, NULL, CLONE_FS | CLONE_SIGHAND);   
+										840     kernel_init_freeable();  
+										928         prepare_namespace(); 
+																||
+																\/
+																init/do_mounts.c  
+																589     mount_root();   进行文件系统判断
+																mount_nfs_root()完成了对文件系统的挂载
+
+内核启动：head.S head-common.S init/main.c init/do_mount.c
+
+设备传参方式
+1、2.6内核之前 dev_param结构体进行传参
+2、2.6内核后，使用dev_tags 结构体传参
+3、3.0后，使用设备树进行传参
+
+设备树
+定义：Device Tree是一种描述硬件的数据结构
+dtsi	设备树的头文件
+dtb		设备树可执行文件
+dts 	设备树的源文件
+
+
+设备树的书写格式
+/{
+	node1{
+
+	};
+
+	node2{
+		childnode2{
+
+		};
+
+	};
+};
+节点属性
+model ：表示具体某一个machine 
+compatible：表示支持的一系列machine，第一个是主要支持machine，后边是兼容的machine，用来表示每个设备的子节点也有这个属性，用来将驱动和设备绑定。
+       子节点属性
+       compatible：同上用来绑定一个驱动和设备
+       reg：可寻址设备用来表示编码地址信息，是一个列表
+
+设备树参考文档：linux-3.14/Documentation/devicetree
+
+作业 ：实验九 实验十

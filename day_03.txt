@@ -1,0 +1,55 @@
+
+查询源码
+在本文件中
+shift + *
+n向下寻找
+N向上寻找
+ctags 使用
+
+生成索引 ctags -R
+查询 ctrl+]
+两次esc进行输出数字
+回到上级文件 ctrl + t
+打开文件要在源码顶层路径下打开
+
+u-boot的启动流程
+第一阶段：主要是汇编代码
+进入arch/arm/cpu/armv7/start.S
+建立中断异常向量表
+39 _start: b   reset 
+		||
+		\/
+127     bl  save_boot_params   保存了当前cpu的运行状态，reset则进行跳转
+设置svc模式
+131     mrs r0, cpsr
+132     bic r0, r0, #0x1f
+133     orr r0, r0, #0xd3
+134     msr cpsr,r0   
+设置向量，为设置协处理器做准备
+167     bl  cpu_init_cp15    完成了我们对协处理器设置，关闭了MMU和cache 
+		||
+		\/
+168     bl  cpu_init_crit
+						||
+						\/
+						b   lowlevel_init(board/samsung/fs4412/lowlevel_init.S ) 
+							设置了reset，使能reset 
+							关闭了开门狗（不需要帮我们重启）
+							进行判断uboot是否运行在物理地址中TEXT_BASE （0x43e000000）
+							进行串口初始化操作，我们已经可以使用串口显示
+							pop {pc} ==> mov pc,lr
+
+		bl _main(arch/arm/lib/crt0.S  )
+					为gd结构体的赋值做准备（提供gd结构体大小的空间）
+					||
+					\/
+			115     bl  board_init_f （arch/arm/lib/board.c  ）
+					给gd结构体进行赋值 gd结构体定义（include/asm/global_data.h ）
+					303     for (init_fnc_ptr = init_sequence; *init_fnc_ptr; ++init_fnc_ptr) {
+					304         if ((*init_fnc_ptr)() != 0) {
+					305             hang ();
+					306         }
+					307     }  
+					完成各种板子初始化操作，最重要的是初始化了DRAM控制器，我开始使用400000000-800000000物理地址
+
+第二阶段：主要是c代码

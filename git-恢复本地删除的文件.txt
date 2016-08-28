@@ -1,0 +1,11 @@
+linux@ubuntu:~/linux-kernel/linux-3.14/kernel$ git log
+commit c0f4ff71a339eead96f8c174be989ea183aefdc8
+Author: haitao <acer_yuhaitao@163.com>
+Date:   Sun Aug 28 15:19:58 2016 +0800
+
+    linux-3.14-kernel
+linux@ubuntu:~/linux-kernel/linux-3.14/kernel$ git reflog
+c0f4ff7 HEAD@{0}: commit (initial): linux-3.14-kernel
+linux@ubuntu:~/linux-kernel/linux-3.14/kernel$ git reset --hard HEAD@{0}
+Checking out files: 100% (541/541), done.
+HEAD is now at c0f4ff7 linux-3.14-kernel

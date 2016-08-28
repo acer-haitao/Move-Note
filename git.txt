@@ -1,0 +1,260 @@
+
+ssh-keygen -t rsa -C "acer_yuhaitao@163.com"
+
+
+1 全局配置
+
+linux@ubuntu:~/gitHub$ git config --global user.name haitao
+linux@ubuntu:~/gitHub$ git config --global user.email acer_yuhaitao@163.com
+linux@ubuntu:~/gitHub$ git config --global color.ui true
+linux@ubuntu:~/gitHub$ git config --list 
+linux@ubuntu:~$ vi .gitconfig 
+  1 [user]                                                                      
+  2     name = haitao
+  3     email = acer_yuhaitao@163.com
+  4 [color]
+  5     ui = true
+
+2 创建repository
+
+方法1
+linux@ubuntu:~/gitHub/project0$ git init  创建repository
+Initialized empty Git repository in /home/linux/gitHub/project0/.git/
+linux@ubuntu:~/gitHub/project0$ ls
+Flight-Inquiry-System
+linux@ubuntu:~/gitHub/project0$ ls -a
+.  ..  Flight-Inquiry-System  .git
+linux@ubuntu:~/gitHub/project0$ cd .git/
+linux@ubuntu:~/gitHub/project0/.git$ ls
+branches  config  description  HEAD  hooks  info  objects  refs
+方法2
+linux@ubuntu:~/gitHub/project0$ git clone https://github.com/lianghuiyong/Flight-Inquiry-System.git
+
+3 向repository添加和提交
+
+上户口
+linux@ubuntu:~/gitHub/project0$ git status
+# On branch master
+#
+# Initial commit
+#
+# Untracked files:
+#   (use "git add <file>..." to include in what will be committed)
+#
+#       Flight-Inquiry-System/ --->红色代表还没上户口
+nothing added to commit but untracked files present (use "git add" to track)
+linux@ubuntu:~/gitHub/project0$ git add Flight-Inquiry-System --->上户口命令
+linux@ubuntu:~/gitHub/project0$ git status
+# On branch master
+#
+# Initial commit
+#
+# Changes to be committed:
+#   (use "git rm --cached <file>..." to unstage)
+#
+#       new file:   Flight-Inquiry-System--->变成绿色代表成功的上了户口
+
+提交
+linux@ubuntu:~/gitHub/project0$ git commit -m 'init commit'
+[master (root-commit) c6d4b34] init commit
+ 1 file changed, 1 insertion(+)
+ create mode 160000 Flight-Inquiry-System
+linux@ubuntu:~/gitHub/project0$ git status
+# On branch master
+nothing to commit (working directory clean)
+
+4 查看git状态
+linux@ubuntu:~/gitHub/project0$ echo '*~' > gitignore
+linux@ubuntu:~/gitHub/project0$ git status
+# On branch master
+# Untracked files:
+#   (use "git add <file>..." to include in what will be committed)
+#
+#       gitignore
+nothing added to commit but untracked files present (use "git add" to track)
+
+linux@ubuntu:~/gitHub/project0$ git status -s
+?? gitignore
+linux@ubuntu:~/gitHub/project0$ 
+
+linux@ubuntu:~/gitHub/project0$ git diff --stat HEAD
+ copy.c |   13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+ 
+ linux@ubuntu:~/gitHub/project0$ git commit -m 'new update'
+[master 0b2ac6b] new update
+ 1 file changed, 13 insertions(+)
+ create mode 100644 copy.c
+ 
+ 
+ 5 撤销
+ linux@ubuntu:~/gitHub/project0$ git checkout copy.c
+ linux@ubuntu:~/gitHub/project0$ git reset copy.c
+ linux@ubuntu:~/gitHub/project0$ git checkout HEAD copy.c
+linux@ubuntu:~/gitHub/project0$ vi copy.c 
+  3     > Author: yuhaitao
+  4     > Mail:acer_yuhaitao@163.com 
+  5     > Created Time: Sun 31 Jul 2016 07:21:08 PM CST
+  6  ************************************************************************/
+  7 
+  8 #include <stdio.h>
+  9 int main(int argc, char *argv[])
+ 10 {
+ 11 
+ 12     return 0;                                                               
+ 13 }
+ NORMAL  copy.c                               unix │ utf-8 │ c   92%  LN  12:5  
+"copy.c" 13L, 352C written
+
+linux@ubuntu:~/gitHub/project0$ git commit -am 'add new code'
+[master b8188f9] add new code
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+linux@ubuntu:~/gitHub/project0$ git status -s
+
+6 移除或重命名
+
+linux@ubuntu:~/gitHub/project0$ rm README 
+linux@ubuntu:~/gitHub/project0$ git rm README
+linux@ubuntu:~/gitHub/project0$ git commit -m "delete README"
+[master 9813bce] delete README
+ 0 files changed
+ delete mode 100644 README
+
+linux@ubuntu:~/gitHub/project0$ git rm copy.c
+rm 'copy.c'
+linux@ubuntu:~/gitHub/project0$ git status
+# On branch master
+# Changes to be committed:
+#   (use "git reset HEAD <file>..." to unstage)
+#
+#       deleted:    copy.c
+#linux@ubuntu:~/gitHub/project0$ git rm --cache copy.c
+
+7 放抽屉
+
+linux@ubuntu:~/gitHub/project0$ git stash
+No local changes to save
+linux@ubuntu:~/gitHub/project0$ git stash list
+linux@ubuntu:~/gitHub/project0$ git stash pop
+
+8 查看提交日志
+linux@ubuntu:~/gitHub/project0$ git log
+commit 4a6567c99816985367749414caabc0fa18188505
+Author: haitao <acer_yuhaitao@163.com>
+Date:   Sun Jul 31 20:29:32 2016 +0800
+
+    add
+
+commit a5467027b3068b5c8b48f7dc0c16724511baee43
+Author: haitao <acer_yuhaitao@163.com>
+Date:   Sun Jul 31 19:46:44 2016 +0800
+
+    delete copy.c
+    
+9 跳过add到暂存区域提交到仓库（对新建的文件不起作用）
+linux@ubuntu:~/gitHub/project0$ git commit -a -m  "add 2"
+# On branch master
+nothing to commit (working directory clean)
+
+10 重命名
+linux@ubuntu:~/gitHub/project0$ git mv hello.c hi.c 
+linux@ubuntu:~/gitHub/project0$ git commit -m "rename hello"
+[master 41e5ee0] rename hello
+ 1 file changed, 0 insertions(+), 0 deletions(-)
+ rename hello.c => hi.c (100%)
+linux@ubuntu:~/gitHub/project0$ 
+
+11
+linux@ubuntu:~/gitHub/project0$ git branch tryidea
+linux@ubuntu:~/gitHub/project0$ git branch 
+* master
+  tryidea
+linux@ubuntu:~/gitHub/project0$ git checkout tryidea 
+Switched to branch 'tryidea'
+linux@ubuntu:~/gitHub/project0$ git branch           
+  master
+* tryidea
+
+上传到github
+linux@ubuntu:~/gitHub/project0$ git push origin master
+fatal: 'origin' does not appear to be a git repository
+fatal: The remote end hung up unexpectedly
+linux@ubuntu:~/gitHub/project0$ git remote add origin git@github.com:acer-haitao/MyTest.git
+linux@ubuntu:~/gitHub/project0$ git push origin master
+Counting objects: 19, done.
+Delta compression using up to 2 threads.
+Compressing objects: 100% (16/16), done.
+Writing objects: 100% (19/19), 1.75 KiB, done.
+Total 19 (delta 6), reused 0 (delta 0)
+To git@github.com:acer-haitao/MyTest.git
+ * [new branch]      master -> master
+
+git checkout master切换
+git branch + 名字
+git branch -d + 名字
+git checkout -b +  名字
+git merge + 名字
+
+git log --graph --pretty=format:'%Cred%h%Creset-%C(yellow)%d%Creset%s%Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit --date=relative
+
+git config --global alias.lg "log  --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%C(bold blue)<%an>%Creset' --abbrev-commit --date=relative" </%an> 
+git config --global core.quotepath false 显示中文文件名
+
+
+Git是分布式的代码管理工具，远程的代码管理是基于SSH的，所以要使用远程的Git则需要SSH的配置。
+github的SSH配置如下：
+一 、
+设置Git的user name和email：
+$ git config --global user.name "xuhaiyan"
+$ git config --global user.email "haiyan.xu.vip@gmail.com"
+
+二、生成SSH密钥过程：
+1.查看是否已经有了ssh密钥：cd ~/.ssh
+如果没有密钥则不会有此文件夹，有则备份删除
+2.生存密钥：
+$ ssh-keygen -t rsa -C “haiyan.xu.vip@gmail.com”
+按3个回车，密码为空。
+
+Your identification has been saved in /home/tekkub/.ssh/id_rsa.
+Your public key has been saved in /home/tekkub/.ssh/id_rsa.pub.
+The key fingerprint is:
+………………
+
+最后得到了两个文件：id_rsa和id_rsa.pub
+
+3.添加密钥到ssh：ssh-add 文件名
+需要之前输入密码。
+4.在github上添加ssh密钥，这要添加的是“id_rsa.pub”里面的公钥。
+打开https://github.com/ ，登陆xuhaiyan825，然后添加ssh。
+
+5.测试：ssh git@github.com
+The authenticity of host ‘github.com (207.97.227.239)’ can’t be established.
+RSA key fingerprint is 16:27:ac:a5:76:28:2d:36:63:1b:56:4d:eb:df:a6:48.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added ‘github.com,207.97.227.239′ (RSA) to the list of known hosts.
+ERROR: Hi tekkub! You’ve successfully authenticated, but GitHub does not provide shell access
+Connection to github.com closed.
+
+三、 开始使用github
+1.获取源码：
+$ git clone git@github.com:billyanyteen/github-services.git
+2.这样你的机器上就有一个repo了。
+3.git于svn所不同的是git是分布式的，没有服务器概念。所有的人的机器上都有一个repo，每次提交都是给自己机器的repo
+仓库初始化：
+git init
+生成快照并存入项目索引：
+git add
+文件,还有git rm,git mv等等…
+项目索引提交：
+git commit
+4.协作编程：
+将本地repo于远程的origin的repo合并，
+推送本地更新到远程：
+git push origin master
+更新远程更新到本地：
+git pull origin master
+补充：
+添加远端repo：
+$ git remote add upstream git://github.com/pjhyett/github-services.git
+重命名远端repo：
+$ git://github.com/pjhyett/github-services.git为“upstream”

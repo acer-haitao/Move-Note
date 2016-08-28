@@ -1,0 +1,53 @@
+内核调试
+内核崩溃处理方法：
+1、反汇编（不推荐）
+2、addr2line c0277cc8 -e vmlinux -f
+
+内核调试方法
+1、点灯 （用于没有串口打印时）
+2、串口打印调试
+	console初始化前 printascii
+	内核解压前 putstr
+	内核解压后 printk（重点）
+
+
+
+prink打印级别
+0-7 随着数值的增大，打印权限越大，约可以轻松打印
+/proc/sys/kernel/printk [RO]当前文件保存系统的打印级别
+4  					4 						1 	 			7
+当前系统显示级别		当前printk的打印级别		显示级别最小值	显示级别最大值
+系统显示级别范围1-7
+
+当前printk打印级别<=当前系统显示级别 进行信息打印
+打印级别的宏定义include/linux/kernel.h
+
+根文件系统
+定义：存放运行、维护系统所必须的各种工具软件、库文件、脚本、配置文件和其他特殊文件的地方
+
+目录结构
+bin：可执行程序
+lib：库文件
+etc：存放所有的配置文件
+dev：设备文件
+mnt：挂载临时文件系统
+proc：进程和内核通信内容
+tmp：临时挂载点
+
+制作文件系统使用工具 busybox
+
+制作最小文件系统需要添加的文件
+etc/
+├── fstab
+├── init.d
+│   └── rcS
+├── inittab
+└── profile
+
+fstab 说明了各种文件系统类型的挂载位置
+init.d/rcS 开启设备挂载方式，系统启动脚本
+inittab
+  1 ::sysinit:/etc/init.d/rcS 表明系统启动的第一个文件
+  2 ::askfirst:-/bin/sh			表明系统第一个文件类型
+  3 ::restart:/sbin/init 		规定了我们的重启命令
+  4 ::ctrlaltdel:/sbin/reboot   重启按键

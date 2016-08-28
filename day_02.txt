@@ -1,0 +1,124 @@
+1、配置
+	步骤 （make）
+	流程
+2、编译流程
+
+3、启动流程
+
+ctags -R 生成索引文件
+
+uboot1.1(2008年前)
+uboot 2008
+
+选用：uboot 2013
+
+选用原则
+1、支持我们使用的开发板
+2、资料多
+3、与时俱进
+
+uboot源码目录
+平台相关
+arch（提供平台架构支持） board（开发板支持）
+平台无关
+common（uboot命令） disk(磁盘) doc(文档)  driver(驱动) dts(设备树) fs(文件系统)  include(头文件) lib(库文件) net(网络支持) tools(编译代码时需要使用的工具)
+
+u-boot配置
+步骤 make fs4412_config
+	 make xxxx_config
+
+流程
+进入makefile中
+obj指的是Makefile的当前路径
+790 %_config::  unconfig
+791     @$(MKCONFIG) -A $(@:_config=) ==>fs4412_config > fs4412
+
+131 MKCONFIG    := $(SRCTREE)/mkconfig ==> 源码路径下的mkconfig
+132 export MKCONFIG  
+
+126 SRCTREE     := $(CURDIR)  
+
+./mkconfig -A fs4412
+
+line= fs4412       arm     armv7       fs4412      samsung    exynos  
+		$1			$2		$3			$4			$5			$6
+
+./mkconfig fs4412       arm     armv7       fs4412      samsung    exynos 
+
+CONFIG_NAME = fs4412_config
+BOARD_NAME = fs4412_config
+arch = arm
+cpu = armv7
+sql_cpu= armv7
+board = fs4412
+vendor = samung
+soc = exynos
+
+创建软链接
+113     cd ./include                                                                                                       
+114     rm -f asm
+115     ln -s ../arch/${arch}/include/asm asm
+
+-z判断变量是否有长度 有长度返回0
+
+123     ln -s ${LNPREFIX}arch-${soc} asm/arch
+127     rm -f asm/proc
+128     ln -s ${LNPREFIX}proc-armv asm/proc 
+
+154     BOARDDIR=${vendor}/${board}  ==> samung/fs4412
+在include创建了config.mk config.h
+
+总结：给变量赋值，保存在config.mk config.h 创建了三个软链接（include）
+
+
+u-boot编译过程
+步骤
+	make
+流程
+进入Makefile文件
+171 all:
+172 sinclude $(obj)include/autoconf.mk.dep
+173 sinclude $(obj)include/autoconf.mk   自动配置u-boot
+
+429 all:        $(ALL-y) $(SUBDIR_EXAMPLES)   
+412 ALL-y += $(obj)u-boot.srec $(obj)u-boot.bin $(obj)System.map （）
+161 SUBDIR_EXAMPLES = examples/standalone examples/api  
+include/configs/fs4412.h  包含所有的宏配置 （CONFIG_SPL）
+
+444 $(obj)u-boot.bin:   $(obj)u-boot
+445         $(OBJCOPY) ${OBJCFLAGS} -O binary $< $@
+446         $(BOARD_SIZE_CHECK)   
+
+config.mk中
+150 OBJCOPY = $(CROSS_COMPILE)objcopy  
+195 OBJCFLAGS += --gap-fill=0xff  
+
+回到Makefile
+581 $(obj)u-boot:   depend \
+582         $(SUBDIR_TOOLS) $(OBJS) $(LIBBOARD) $(LIBS) $(LDSCRIPT) $(obj)u-boot.lds
+583         $(GEN_UBOOT)  
+
+160 SUBDIR_TOOLS = tools  
+
+237 OBJS  = $(CPUDIR)/start.o  （重要目标）==> arch/arm/cpu/arnv7/start.o
+166 CPUDIR=arch/$(ARCH)/cpu/$(CPU)   
+
+365 LIBBOARD = board/$(BOARDDIR)/lib$(BOARD).o ==> board/samung/fs4412/libboard.o
+366 LIBBOARD := $(addprefix $(obj),$(LIBBOARD))  
+
+362 LIBS := $(addprefix $(obj),$(sort $(LIBS-y))) 添加了各种目标文件
+
+wildcard + 变量 扩展变量下的文件
+225         LDSCRIPT := $(TOPDIR)/arch/$(ARCH)/cpu/u-boot.lds   arch/arm/cpu/u-boot.lds 
+
+$(obj)u-boot.lds 链接脚本生成顶层路径下的u-boot.lds
+  $(GEN_UBOOT) 优化选项
+
+生成半成品u-boot.bin
+
+u-boot-fs4412.bin
+BL1
+BL2
+数字签名
+安全算法
+u-boot.bin

@@ -1,0 +1,74 @@
+1、linux内核编译
+步骤 make uImage -j2
+
+流程
+进入Makefile
+ 504 include $(srctree)/arch/$(SRCARCH)/Makefile （找不到目标文件，就找include）
+
+ arch/arm/Makefile
+
+
+299 BOOT_TARGETS    = zImage Image xipImage bootpImage uImage  
+
+304 $(BOOT_TARGETS): vmlinux
+305     $(Q)$(MAKE) $(build)=$(boot) MACHINE=$(MACHINE) $(boot)/$@
+
+@make ==> make -C (执行build路径下的Makefile)
+291 boot := arch/arm/boot 
+make menuconfig就是在顶层路径下生成了.config文件 存放我们的配置信息
+155 machine-$(CONFIG_ARCH_EXYNOS)       += exynos 
+233 MACHINE  := arch/arm/mach-$(word 1,$(machine-y))/  
+
+MACHINE=arch/arm/mach-exynos/
+$(boot)/$@=arch/arm/boot/uImage 
+
+make -C arch/arm/boot MACHINE= arch/arm/mach-exynos/ arch/arm/boot/uImage
+
+make -p > test （包含了所有的全局变量）
+
+进入arch/arm/boot/Makefile
+ 15 include $(srctree)/$(MACHINE)/Makefile.boot  
+ arch/arm/mach-exynos/Makefile.boot
+  1    zreladdr-y   += 0x40008000 uImage的启动地址
+  2 params_phys-y   := 0x40000100 uImage的存放位置  
+
+78 $(obj)/uImage:  $(obj)/zImage FORCE （强制生成）
+ 
+ 54 $(obj)/zImage:  $(obj)/compressed/vmlinux FORCE
+
+51 $(obj)/compressed/vmlinux: $(obj)/Image FORCE
+52     $(Q)$(MAKE) $(build)=$(obj)/compressed $@
+                                                                                                                     
+make -C arch/arm/boot/compressed
+
+185 $(obj)/vmlinux: $(obj)/vmlinux.lds $(obj)/$(HEAD) $(obj)/piggy.$(suffix_y).o \
+186         $(addprefix $(obj)/, $(OBJS)) $(lib1funcs) $(ashldi3) \
+187         $(bswapsdi2) FORCE  
+
+$(obj)/$(HEAD) arch/arm/boot/compressed/head.o （arch/arm/kernel/head.S生成）
+ 
+ $(obj)/piggy.$(suffix_y).o:  $(obj)/piggy.$(suffix_y) FORCE   
+ 192 $(obj)/piggy.$(suffix_y): $(obj)/../Image FORCE （由顶层路径下的vmlinux生成）
+
+OBJ需要配置添加的库文件
+148 lib1funcs = $(obj)/lib1funcs.o  
+154 ashldi3 = $(obj)/ashldi3.o     
+
+需要生成顶层路径下的vmlinux就可以生成我们的Image就可以生成······
+ 817 vmlinux: scripts/link-vmlinux.sh $(vmlinux-deps) FORCE 
+ 809 vmlinux-deps := $(KBUILD_LDS) $(KBUILD_VMLINUX_INIT) $(KBUILD_VMLINUX_MAIN)
+
+ 804 export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
+
+ 802 export KBUILD_VMLINUX_INIT := $(head-y) $(init-y)
+ 803 export KBUILD_VMLINUX_MAIN := $(core-y) $(libs-y) $(drivers-y) $(net-y)
+ 804 export KBUILD_LDS          := arch/$(SRCARCH)/kernel/vmlinux.lds
+
+head-y=
+  530 init-y      := init/                                                                                                  
+ 531 drivers-y   := drivers/ sound/ firmware/
+ 532 net-y       := net/
+ 533 libs-y      := lib/
+ 534 core-y      := usr/
+
+生成顶层vmlinux

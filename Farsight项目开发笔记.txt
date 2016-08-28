@@ -1,0 +1,160 @@
+1 开发环境搭建
+ 
+ 【1】配置交叉工具链：
+环境变量的添加
+sudo vi /etc/bash.bashrc
+在最后面添加以下命令
+export PATH=$PATH:/home/linux/work/4412/toolchain-4.4.6/bin/
+
+【2】 编译 Bootloader  源码
+
+ 将\Cortex-A9\镜像源码目录中的 uboot-fs4412_v2.tar 拷贝到工作目录中
+执行命令：
+tar xvf uboot-fs4412_v2.tar.xz
+解压后会出现 uboot-fs4412_v2 目录，进入/uboot-fs4412_v2/u-boot-2010.03 目录
+cd /uboot-fs4412_v2/u-boot-2010.03
+修改 Makefile
+vi Makefile
+找到如下图所示代码
+修改为
+
+ifeq ($(ARCH),arm)
+#CROSS_COMPILE = arm-linux-
+CROSS_COMPILE = arm-none-linux-gnueabi-
+
+保存退出后执行脚本 build_uboot.sh(指定产品以优化脚本)
+./ build_uboot.sh
+【3】  编译 linux 
+
+进入 linux 内核目录
+cd linux-3.0-fs4412_V3
+修改 Makefile
+vi Makefile
+修改 198 行中代码
+#CROSS_COMPILE   ?= arm-none-linux-gnueabi-
+#CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+CROSS_COMPILE   ?= arm-none-linux-gnueabi-
+修改完后，可以开始编译 linux 源码
+执行以下命令：
+make zImage -j2 //其中“-j2”为编译时使用的 CPU 线程数
+
+原板卡配置
+FS4412 # print
+bootdelay=5
+baudrate=115200
+ethaddr=11:22:33:44:55:66
+gatewayip=192.168.100.1
+ethact=dm9000
+bootargs=root=/dev/nfs nfsroot=192.168.9.120:/source/rootfs ip=192.168.9.121:192.168.9.120::255.255.255.0::eth0:off console=ttySAC2,115200 init=/linuxrc
+bootcmd=tftp 41000000 zImage;bootm 41000000
+serverip=192.168.9.120
+ipaddr=192.168.9.121
+stdin=serial
+stdout=serial
+stderr=serial
+
+网络挂载设置
+setenv gatewayip 192.168.2.1
+setenv serverip 192.168.2.158
+setenv ipaddr=192.168.2.2
+setenv bootargs root=/dev/nfs nfsroot=192.168.2.158:/source/rootfs ip=192.168.2.2:192.168.2.158::255.255.255.0::eth0:off console=ttySAC2,115200 init=/linuxrc
+
+一、BOA服务器移植
+【1】
+linux@ubuntu:~/Farsight/boa-0.94.13$ ls
+boa.conf  ChangeLog  contrib  CREDITS  docs  examples  extras  Gnu_License  README  src
+【2】 生成Makefile
+linux@ubuntu:~/Farsight/boa-0.94.13/src$ ./configure 
+creating cache ./config.cache
+creating ./config.status
+creating Makefile
+creating config.h
+【3】linux@ubuntu:~/Farsight/boa-0.94.13/src$ vi Makefile
+
+修改CC ＝ gcc 为 CC ＝ arm-none-linux-gnueabi-gcc
+修改CPP ＝ gcc -E 为 CPP ＝ arm-none-linux-gnueabi-gcc -E
+【4】
+linux@ubuntu:~/Farsight/boa-0.94.13/src$ make
+yacc  -d boa_grammar.y
+make: yacc: Command not found
+make: *** [y.tab.c] Error 127
+linux@ubuntu:~/Farsight/boa-0.94.13/src$ Apt-get install bison flex
+
+linux@ubuntu:~/Farsight/boa-0.94.13/src$ make
+yacc  -d boa_grammar.y
+
+arm-none-linux-gnueabi-gcc  -g -O2 -pipe -Wall -I.   -c -o y.tab.o y.tab.c
+y.tab.c: In function 'yyparse':
+util.c: In function 'get_commonlog_time':
+util.c:100:1: error: pasting "t" and "->" does not give a valid preprocessing token
+make: *** [util.o] Error 1
+解决方法：
+
+　解决方法： 
+　　修改 src/compat.h 
+　　#define TIMEZONE_OFFSET(foo) foo##->tm_gmtoff 
+　　修改成 
+　　#define TIMEZONE_OFFSET(foo) (foo)->tm_gmtoff 
+　　然后 
+　　debian:/home/linux/boa-0.94.13/src# make clean 
+ 
+　　debian:/home/linux/boa-0.94.13/src# make 
+ 
+　　出现： 
+　　debian:/home/a/sss/boa-0.94.13/src# make 
+　　make: Nothing to be done for `all'. 
+　　说明make没有检查到需要编译的东西，库或者应用程序已经编译好了。 
+　　make主要检查的是时间戳，只要target比依赖的文件时间靠后它就认为不需要编译.
+【5】
+然后给boa瘦身
+      arm-none-linux-gnueabi-strip boa
+
+二、Boa服务器配置
+二、Boa服务器配置
+1、	创建目录
+mkdir /source/rootfs/etc/boa
+2、	将boa源码目录下的boa.conf拷贝到/source/rootfs/etc/boa目录下
+cp boa.conf /source/rootfs/etc/boa
+3、	修改配置文件boa.conf
+vim  /source/rootfs/etc/boa
+(1)Group的修改
+修改 Group nogroup
+为 Group 0
+(2)user的修改
+修改 User nobody
+为 User 0
+(3)ScriptAlias的修改
+修改ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
+为 ScriptAlias /cgi-bin/ /www/cgi-bin/
+(5)DocumentRoot的修改
+修改DocumentRoot /var/www
+为DocumentRoot /www
+(6)ServerName的设置
+修改#ServerName www.your.org.here
+为 ServerName www.your.org.here
+否则会出现错误“gethostbyname::No such file or directory”
+(7)AccessLog修改
+修改AccessLog /var/log/boa/access_log
+为#AccessLog /var/log/boa/access_log
+(8)以下配置和boa.conf的配置有关，都是在ARM根文件系统中创建
+以下步骤在开发板上进行：
+创建HTML文档的主目录/www
+mkdir /www
+创建CGI脚本所在录 /www/cgi-bin
+mkdir /www/cgi-bin
+当不能使用cgi 时
+将#AddType application/x-httpd-cgi cgi改为AddType application/x-httpd-cgi cgi
+boa器测试
+将boa拷贝到开发板根文件系统的/etc/boa下
+#cp src/boa /source/rootfs/etc/boa
+将ubuntu下/etc/mime.types拷贝到开发板根文件系统的/etc下
+#cp /etc/mime.types /source/rootfs/etc
+将你的主页index.html拷贝到www目录下
+
+运行boa,然后在主机游览器输入开发板网址
+[root@farsight boa]# ./boa
+[30/10/2011:19:10:36 +0000] [root@farsight boa]# boa: server version Boa/0.94.13
+[30/10/2011:19:10:36 +0000] boa: server built 10 30 2011 at 19:10:36
+[30/10/2011:19:10:36 +0000] boa: starting server pid=968, port 80
+
+ 

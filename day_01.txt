@@ -1,0 +1,260 @@
+﻿
+系统移植内容
+
+windows系统
+BIOS系统（引导系统） windows系统   文件系统（特定格式） 驱动 应用程序（交互界面（图形界面、命令行））
+
+linux系统
+bootloader(u-boot) linux系统  根文件系统  驱动（驱动树） 应用程序
+
+
+交叉编译：运行和编译代码不在同一台机器上
+
+gcc编译的四个步骤
+预处理：cpp test.c > test.i
+编译 ： ./cc1 test.i > test.s (/usr/lib/gcc/i386../4.8/) 
+汇编 ：	as -o test.o test.s
+链接 ：	ld （不推荐）
+-I 指定头文件路径
+-L 指定库路径
+
+elf：linux/unix系统常用二进制文件格式
+
+elf文件只能运行在linux/unix系统中 
+
+
+a.out文件都是elf格式
+补充命令
+readelf 查看二进制文件
+readelf -h a.out 查看二进制文件头
+readelf -a a.out 
+
+size a.out 查看文本段等大小
+
+nm a.out 显示符号
+
+重要命令
+
+file a.out 查看二进制文件信息（方便）
+
+strip a.out 瘦身命令
+ps：不能对中间文件进行瘦身
+
+objdump -d a.out > test.dis 对二进制文件进行反汇编
+objdump -D a.out > test.dis
+objdump -D 			-b binary 			-m i386 	test.bin > test。dis
+		一定是-D			二进制文件格式	对应机型
+
+objcopy --gap-fill=0xff 	-O 	binary  	a.out  test.bin 转换格式
+		格式对齐全部填充为1	转换文件格式		源文件	转换文件
+objcopy --gap-fill=0xff -O srec  a.out  test.srec摩托罗拉文件格式
+
+addr2line 定位内核错误
+
+网络配置
+/etc/network/interfaces  
+ 2 auto lo
+ 3 iface lo inet loopback  
+
+ 交叉编译工具链：为了交叉编译需要安装的工具
+ tar xvf gcc-4.6.4.tar.xz
+sudo vi /etc/bash.bashrc(声明了全局变量)
+最后一行
+69 export PATH=$PATH:/home/lf/sys/gcc-4.6.4/bin    表示交叉编译工具链的路径
+source /etc/bash.bashrc
+arm-none-linux-gnueabi-gcc -v
+
+
+tftp服务器:进行文本传输
+
+tftpd(服务器端) tftp（客户端）
+
+1、检测tftp服务器安装情况
+dpkg -s tftpd-hpa
+
+2、安装tftp服务器
+sudo apt-get install tftpd-hpa tftp-hpa
+
+3、配置tftp服务器（/etc/default/tftpd-hpa）
+在根文件目录下创建文件夹tftpboot  
+tftpboot需要最大权限
+  3 TFTP_USERNAME="tftp"
+  4 TFTP_DIRECTORY="/tftpboot"
+  5 TFTP_ADDRESS="0.0.0.0:69"
+  6 TFTP_OPTIONS="-c -s -l"  
+
+4、重启tftp服务器
+  sudo service tftpd-hpa restart
+
+nfs服务器：网络文件系统
+1、在根目录下创建文件夹
+给文件夹加权限
+
+2、安装nfs服务器
+sudo apt-get install nfs-kernel-server
+
+3、配置nfs服务器（etc/export）
+ /source/rootfs *(rw,sync,no_subtree_check,no_root_squash)
+
+4、重启nfs服务器	
+ sudo service nfs-kernel-server restart 
+
+bootloader：硬件启动的引导程序，是运行操作系统的前提
+bootloader特点：
+1、汇编语言和C语言混合开发
+2、特定的cpu、开发板
+
+bootloader模式：自启动模式和交互模式
+
+bootloader基本功能
+1、初始化相关硬件
+2、把bootloader自搬运到内存中
+3、提供C语言环境
+4、执行用户的命令
+5、加载内核和传参
+
+bootloader选用：uboot
+uboot命令：环境设置、数据传输、存储器访问、加载运行
+
+环境设置：
+print 显示所有环境设置
+setenv 设置环境变量 （不输入任何参数表示删除）
+saveenv 保存环境变量
+serverip 服务器ip
+ipaddr  开发板ip
+
+数据传输：
+tftp 		41000000 		uImage
+下载命令		物理地址			tftp文件夹中的文件
+
+ movi write 	kernel 			41000000
+ 		写入		存储器分区		存放文件的地址处
+
+ movi read   	kernel  				41000000
+ 		读入		存放文件的存储器分区		运行的地址处
+
+
+存储器访问：
+mm 0x11000c24（地址递增）
+nm 0x11000c24 （地址不递增）
+退出设置 q
+
+fdisk -c 0 格式化sd卡
+fdisk -c mmc 格式化emmc
+
+加载运行命令
+
+bootcmd=tftp 41000000 uImage\;tftp 42000000 exynos4412-fs4412.dtb\; 设置启动命令参数
+ 						linux内核				设备树
+
+bootm 	41000000 	-	 					42000000 设置启动顺序
+		linux内核	43000000（内存文件系统）	设备树
+
+
+bootcmd=tftp 41000000 uImage;tftp 42000000 exynos4412-fs4412.dtb;bootm 41000000 - 42000000
+
+
+bootargs root=/dev/nfs 				nfsroot=192.168.1.100:/source/rootfs 	rw  		console=ttySAC2,115200 init=/linuxrc 		ip=192.168.1.6
+			指明文件系统设备类型			serverip下的nfs目录					可读可写		指明串口和波特率			第一个执行程序		开发板ip
+
+
+作业：实验1，实验2
+系统移植内容
+
+windows系统
+BIOS系统（引导系统） windows系统   文件系统（特定格式） 驱动 应用程序（交互界面（图形界面、命令行））
+
+linux系统
+bootloader(u-boot) linux系统  根文件系统  驱动（驱动树） 应用程序
+
+
+交叉编译：运行和编译代码不在同一台机器上
+
+gcc编译的四个步骤
+预处理：cpp test.c > test.i
+编译 ： ./cc1 test.i > test.s (/usr/lib/gcc/i386../4.8/) 
+汇编 ：	as -o test.o test.s
+链接 ：	ld （不推荐）
+-I 指定头文件路径
+-L 指定库路径
+
+elf：linux/unix系统常用二进制文件格式
+
+elf文件只能运行在linux/unix系统中 
+
+
+a.out文件都是elf格式
+补充命令
+readelf 查看二进制文件
+readelf -h a.out 查看二进制文件头
+readelf -a a.out 
+
+size a.out 查看文本段等大小
+
+nm a.out 显示符号
+
+重要命令
+
+file a.out 查看二进制文件信息（方便）
+
+strip a.out 瘦身命令
+ps：不能对中间文件进行瘦身
+
+objdump -d a.out > test.dis 对二进制文件进行反汇编
+objdump -D a.out > test.dis
+objdump -D 			-b binary 			-m i386 	test.bin > test。dis
+		一定是-D			二进制文件格式	对应机型
+
+objcopy --gap-fill=0xff 	-O 	binary  	a.out  test.bin 转换格式
+		格式对齐全部填充为1	转换文件格式		源文件	转换文件
+objcopy --gap-fill=0xff -O srec  a.out  test.srec摩托罗拉文件格式
+
+addr2line 定位内核错误
+
+网络配置
+/etc/network/interfaces  
+ 2 auto lo
+ 3 iface lo inet loopback  
+
+ 交叉编译工具链：为了交叉编译需要安装的工具
+ tar xvf gcc-4.6.4.tar.xz
+sudo vi /etc/bash.bashrc(声明了全局变量)
+最后一行
+69 export PATH=$PATH:/home/lf/sys/gcc-4.6.4/bin    表示交叉编译工具链的路径
+source /etc/bash.bashrc
+arm-none-linux-gnueabi-gcc -v
+
+
+tftp服务器:进行文本传输
+
+tftpd(服务器端) tftp（客户端）
+
+1、检测tftp服务器安装情况
+dpkg -s tftpd-hpa
+
+2、安装tftp服务器
+sudo apt-get install tftpd-hpa tftp-hpa
+
+3、配置tftp服务器（/etc/default/tftpd-hpa）
+在根文件目录下创建文件夹tftpboot  
+tftpboot需要最大权限
+  3 TFTP_USERNAME="tftp"
+  4 TFTP_DIRECTORY="/tftpboot"
+  5 TFTP_ADDRESS="0.0.0.0:69"
+  6 TFTP_OPTIONS="-c -s -l"  
+
+4、重启tftp服务器
+  sudo service tftpd-hpa restart
+
+nfs服务器：网络文件系统
+1、在根目录下创建文件夹
+给文件夹加权限
+
+2、安装nfs服务器
+sudo apt-get install nfs-kernel-server
+
+3、配置nfs服务器（etc/export）
+ /source/rootfs *(rw,sync,no_subtree_check,no_root_squash)
+
+4、重启nfs服务器	
+ sudo service nfs-kernel-server restart 
